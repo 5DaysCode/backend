@@ -1,8 +1,9 @@
 const HttpError = require("../models/http-error");
 
 const uuid = require("uuid").v4;
+const { validationResult } = require("express-validator");
 
-const DUMMY_PLACES = [
+let DUMMY_PLACES = [
   {
     id: "p1",
     title: "Empire State Building",
@@ -41,23 +42,31 @@ const getPlaceById = (req, res, next) => {
   }
   res.json({ place });
 };
-const getPlaceByUserId = (req, res, next) => {
+
+const getPlacseByUserId = (req, res, next) => {
   const userId = req.params.uid;
 
-  const place = DUMMY_PLACES.find((p) => {
+  const places = DUMMY_PLACES.filter((p) => {
     return p.creator === userId;
   });
 
-  if (!place) {
+  if (!places || places.length === 0) {
     return next(
-      new HttpError("Could not find a place for the provided user id", 404)
+      new HttpError("Could not find  places for the provided user id", 404)
     );
   }
 
-  res.json({ place });
+  res.json({ places });
 };
 
 const ceratePlace = (req, res, next) => {
+  const errors = validationResult(req);
+  console.log(errors);
+
+  if (!errors.isEmpty()) {
+    throw new HttpError("Invalid inputs passes , please check your data.", 422);
+  }
+
   const { title, description, coordinates, address, creator } = req.body;
   const ceratedPlace = {
     id: uuid(),
@@ -72,6 +81,28 @@ const ceratePlace = (req, res, next) => {
   res.status(201).json({ place: ceratedPlace });
 };
 
+const updatePlace = (req, res, next) => {
+  const { title, description } = req.body;
+  const placeId = req.params.pid;
+
+  const placeIndex = DUMMY_PLACES.findIndex((p) => p.id === placeId);
+
+  const updatedPlace = { ...DUMMY_PLACES[placeIndex] };
+  if (title !== undefined) updatedPlace.title = title;
+  if (description !== undefined) updatedPlace.description = description;
+
+  DUMMY_PLACES[placeIndex] = updatedPlace;
+  res.status(200).json({ place: updatedPlace });
+};
+
+const deletePlace = (req, res, next) => {
+  const placeId = req.params.pid;
+  DUMMY_PLACES = DUMMY_PLACES.filter((p) => p.id !== placeId);
+  res.status(200).json({ message: "Deleted place" });
+};
+
 exports.getPlaceById = getPlaceById;
-exports.getPlaceByUserId = getPlaceByUserId;
+exports.getPlacseByUserId = getPlacseByUserId;
 exports.ceratePlace = ceratePlace;
+exports.updatePlace = updatePlace;
+exports.deletePlace = deletePlace;
